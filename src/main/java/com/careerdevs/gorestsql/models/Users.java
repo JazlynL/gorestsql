@@ -42,4 +42,15 @@ public class Users {
     public String getGender() {
         return gender;
     }
+
+    @Override
+    public String toString() {
+        return "Users{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", status='" + status + '\'' +
+                ", gender='" + gender + '\'' +
+                '}';
+    }
 }

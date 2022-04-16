@@ -23,14 +23,59 @@ public class UserController {
     // using this annotation to access the methods within the  userRepository.
     @Autowired
     private UserRepository userRepository;
+
     /*
     Make a GET request that queries one user by ID and saved their data to your local database,
     While also returning thw user data in the response.
     Make a POST request that creates a user in your local database.
     Make a PUT request that creates a user in your local database.
+*/
 
-     */
+    //getting all users
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllUsers(){
+        try{
 
+            Iterable <Users> allUsers = userRepository.findAll();
+            return  new ResponseEntity<>(allUsers,HttpStatus.OK);
+        }catch(Exception e){
+            System.out.println(e.getMessage());
+            System.out.println(e.getClass());
+            return new ResponseEntity<>(e.getClass(),HttpStatus.INTERNAL_SERVER_ERROR);
+
+        }
+
+    }
+    // getting user by ID;
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getUserData(@PathVariable("id") String id){
+        try{
+
+            if(APIErrorHandiling.isStrNaN(id)){
+                throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, id + "is not a valid ID");
+
+            }
+            int uId = Integer.parseInt(id);
+
+            Optional<Users> foundUser = userRepository.findById(uId);
+
+            // a method to check if any users are actually empty.
+            if(foundUser.isEmpty()){
+                throw new HttpClientErrorException(HttpStatus.NOT_FOUND, "No user with this ID is found"+ id);
+            }
+
+
+           return new ResponseEntity<>(foundUser,HttpStatus.OK);
+
+        }  catch(HttpClientErrorException e){
+            return APIErrorHandiling.customApiError(e.getMessage(), e.getStatusCode());
+        }catch(Exception e){
+            return APIErrorHandiling.genericApiError(e);
+
+        }
+
+
+    }
     //getting all users
     @PostMapping("/uploadall")
     public ResponseEntity getAll(RestTemplate restTemplate) {
@@ -88,43 +133,6 @@ public class UserController {
         }
     }
 
-
-    @GetMapping("/all")
-
-    public ResponseEntity<?> getAllUsers(){
-        try{
-
-            Iterable <Users> allUsers = userRepository.findAll();
-            return  new ResponseEntity<>(allUsers,HttpStatus.OK);
-        }catch(Exception e){
-            System.out.println(e.getMessage());
-            System.out.println(e.getClass());
-            return new ResponseEntity<>(e.getClass(),HttpStatus.INTERNAL_SERVER_ERROR);
-
-        }
-
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getUserData(@PathVariable("id") String id){
-        try{
-            int uId = Integer.parseInt(id);
-
-            Optional<Users> foundUser = userRepository.findById(uId);
-
-
-          return new ResponseEntity<>(foundUser,HttpStatus.CREATED);
-
-        }  catch(HttpClientErrorException e){
-            return APIErrorHandiling.customApiError(e.getMessage(), e.getStatusCode());
-        }catch(Exception e){
-            return APIErrorHandiling.genericApiError(e);
-
-        }
-
-
-    }
-
     @PostMapping("/{upload}/{id}")
 
     public ResponseEntity<?> uploadUserById(@PathVariable("id") String userId,
@@ -134,18 +142,20 @@ public class UserController {
                 // print out message so user knows whats going on
                 // also a simple way to send exception errors.
                 throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, userId +" Not a valid number");
-
-
             }
 
 
             int uID = Integer.parseInt(userId);
 
-         String url = "https://gorest.co.in/public/v2/users/" + uID;
 
-         Users foundUser = restTemplate.getForObject(url,Users.class);
-         System.out.println(foundUser);
-         if(foundUser == null){
+          // we use this url.
+            String url = "https://gorest.co.in/public/v2/users/" + uID;
+
+            Users foundUser = restTemplate.getForObject(url,Users.class);
+            System.out.println(foundUser);
+
+
+            if(foundUser == null){
              throw  new HttpClientErrorException(HttpStatus.NOT_FOUND, "user Data was Null");
          }
 
@@ -178,6 +188,8 @@ public class UserController {
 
     }
 
+
+
 @PostMapping("/")
 public ResponseEntity<?> createUser(@RequestBody Users newUser){
 
@@ -196,21 +208,95 @@ public ResponseEntity<?> createUser(@RequestBody Users newUser){
 
 }
 
+
+
+//updating a user data
     @PutMapping
+    public ResponseEntity<?> updateUsers (@RequestBody Users newUser){
+        {
+
+            try{
+
+                Users savedUsers = userRepository.save(newUser);
+                return new ResponseEntity<>(savedUsers,HttpStatus.CREATED);
+
+            }
+            catch(HttpClientErrorException e){
+                return APIErrorHandiling.customApiError(e.getMessage(), e.getStatusCode());
+            }catch(Exception e){
+                return APIErrorHandiling.genericApiError(e);
+
+            }
+
+        }
+
+    }
 
 
 
-    @DeleteMapping("/deleteAll")
 
-    public ResponseEntity<?> deleteUsers(){
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteUsers(@PathVariable ("id") String userId){
+        try{
+            if(APIErrorHandiling.isStrNaN(userId)){
+                // print out message so user knows whats going on
+                // also a simple way to send exception errors.
+                throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, userId +" Not a valid number");
+            }
+
+
+            int uID = Integer.parseInt(userId);
+
+           Optional<Users> foundUser = userRepository.findById(uID);
+
+           if(foundUser.isEmpty()){
+                throw  new HttpClientErrorException(HttpStatus.NOT_FOUND, "user Data was Null"+ userId);
+            }
+
+            // we are using userRepository Crud methods.
+           userRepository.deleteById(uID);
+
+
+
+            return new ResponseEntity<>(foundUser,HttpStatus.OK);
+
+
+        }catch(NumberFormatException e){
+            return new ResponseEntity<>("ID must be a number",HttpStatus.NOT_FOUND);
+
+        }
+        catch(Exception exception){
+            System.out.println(exception.getMessage());
+            System.out.println(exception.getClass());
+
+
+            return APIErrorHandiling.genericApiError(exception);
+
+        }
+    }
+
+
+
+    @DeleteMapping("/deleteall")
+    public ResponseEntity<?> deleteAllUsers(){
         try{
 
-            long totalUsers = userRepository.count();
-            userRepository.deleteAll();
-            return  new ResponseEntity<>("Users deleted , " + totalUsers, HttpStatus.OK);
-        }catch(Exception e){
-            System.out.println(e.getClass());
-            return new ResponseEntity<>(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR);
+            //this wil display all the users in the gorest data
+           long totalUsers = userRepository.count();
+           userRepository.deleteAll();
+
+           return  new ResponseEntity<>("Users deleted:"+ totalUsers,HttpStatus.OK);
+        }catch(HttpClientErrorException e){
+            return APIErrorHandiling.customApiError(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR);
+
+        }
+        catch(Exception exception){
+            System.out.println(exception.getMessage());
+            System.out.println(exception.getClass());
+
+
+            return APIErrorHandiling.genericApiError(exception);
+
         }
     }
 }
