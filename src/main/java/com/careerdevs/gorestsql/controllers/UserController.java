@@ -3,6 +3,8 @@ package com.careerdevs.gorestsql.controllers;
 import com.careerdevs.gorestsql.models.Users;
 import com.careerdevs.gorestsql.repos.UserRepository;
 import com.careerdevs.gorestsql.utils.APIErrorHandiling;
+import com.careerdevs.gorestsql.utils.UserValidation;
+import com.careerdevs.gorestsql.utils.ValidationError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -204,6 +206,15 @@ public class UserController {
     public ResponseEntity<?> createUser(@RequestBody Users newUser){
 
         try{
+           // creating our validation error
+            ValidationError newUserErrors = UserValidation.validateNewUser(newUser, userRepository,false);
+
+
+
+            if(newUserErrors.hasErrors()){
+                throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, newUserErrors.toString());
+
+            }
 
             Users savedUsers = userRepository.save(newUser);
             return new ResponseEntity<>(savedUsers,HttpStatus.CREATED);
@@ -224,6 +235,14 @@ public class UserController {
         {
 
             try{
+                ValidationError newUserErrors = UserValidation.validateNewUser(updateUser, userRepository, true);
+
+
+
+                if(newUserErrors.hasErrors()){
+                    throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, newUserErrors.toString());
+
+                }
 
                 Users savedUsers = userRepository.save(updateUser);
                 return new ResponseEntity<>(savedUsers,HttpStatus.CREATED);
